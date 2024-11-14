@@ -25,7 +25,7 @@ def main():
             api_key = st.text_input("API Key", type="password", value="sk-ba6af59586a1441ca7ebb6ffbb0a75c8")
             base_url = st.text_input("Base URL", value="https://api.deepseek.com")
             model_name = st.text_input("模型名称", value="deepseek-chat")
-            start_button = st.button("开始提取")
+            start_button = st.button("RUN")
         
         # 主界面显示结果
         if start_button and uploaded_file is not None:
@@ -42,11 +42,13 @@ def main():
     # 聚类及可视化部分
     elif step == "聚类及可视化":
         st.header("步骤二：聚类及可视化")
+        
+        # 移到主界面的文件上传
+        terms_file = st.file_uploader("上传术语列表", type=['csv'])
+        
         # 侧边栏参数设置
         with st.sidebar:
             st.subheader("参数设置")
-            terms_file = st.file_uploader("上传术语列表", type=['csv'])
-            
             st.subheader("聚类参数")
             num_nodes = st.number_input("节点个数", value=300)
             num_relations = st.number_input("关系个数", value=500)
@@ -57,7 +59,7 @@ def main():
             step_decay = st.number_input("步长衰减", value=0.75)
             step_convergence = st.number_input("步长收敛", value=0.001)
             
-            start_button = st.button("开始聚类")
+            start_button = st.button("RUN")
         
         # 主界面显示结果
         if start_button and terms_file is not None:
@@ -95,23 +97,22 @@ def main():
     # 主题标签揭示部分
     else:
         st.header("步骤三：主题标签揭示")
+        
+        # 移到主界面的文件上传
+        cluster_file = st.file_uploader("上传聚类结果文件", type=['txt'])
+        
         # 侧边栏参数设置
         with st.sidebar:
             st.subheader("参数设置")
-            cluster_file = st.file_uploader("上传聚类结果文件", type=['txt'])
-            api_key = st.text_input("API Key", type="password", key="topic_api_key")
-            base_url = st.text_input("Base URL", key="topic_base_url")
-            model_name = st.text_input("模型名称", key="topic_model_name")
-            prompt_template = st.text_area(
-                "主题识别提示词模板",
-                value="请为以下术语集合生成一个准确的主题标签：\n\n{terms}"
-            )
-            start_button = st.button("开始识别")
+            api_key = st.text_input("API Key", type="password", value="sk-ba6af59586a1441ca7ebb6ffbb0a75c8")
+            base_url = st.text_input("Base URL", value="https://api.deepseek.com")
+            model_name = st.text_input("模型名称", value="deepseek-chat")
+            start_button = st.button("RUN")
         
         # 主界面显示结果
         if start_button and cluster_file is not None:
             labeler = TopicLabeler(api_key, base_url, model_name)
-            topics = labeler.label_topics(cluster_file, prompt_template)
+            topics = labeler.label_topics(cluster_file)
             st.dataframe(topics)
             st.download_button(
                 "下载主题标签结果",

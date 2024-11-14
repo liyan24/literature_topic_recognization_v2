@@ -5,7 +5,7 @@ class TopicLabeler:
     def __init__(self, api_key, base_url, model_name):
         self.llm_client = LLMClient(api_key, base_url, model_name)
     
-    def label_topics(self, cluster_file, prompt_template):
+    def label_topics(self, cluster_file):
         # 读取聚类结果
         clusters = {}
         with open(cluster_file, 'r', encoding='utf-8') as f:
@@ -20,7 +20,7 @@ class TopicLabeler:
         
         # 对每个聚类进行处理
         for cluster_id, terms in clusters.items():
-            prompt = prompt_template.format(terms=terms)
+            prompt = f"请为以下术语集合生成一个准确的主题标签：\n\n{terms}"
             label = self.llm_client.get_completion(prompt)
             
             labels.append(label.strip())
