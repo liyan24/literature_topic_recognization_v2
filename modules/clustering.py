@@ -3,6 +3,7 @@ import numpy as np
 import networkx as nx
 from sklearn.manifold import MDS
 import json
+from streamlit_echarts import st_echarts
 
 class Clusterer:
     def __init__(self, num_nodes=300, num_relations=500, random_seed=0,
@@ -80,8 +81,7 @@ class Clusterer:
         pos = {node: positions[i].tolist() for i, node in enumerate(G.nodes())}
         return pos
     
-    def create_visualization_data(self, G, pos, cluster_results):
-        # 创建echarts可视化数据
+    def create_visualization_data(self, G, pos, cluster_results, legend_names):
         nodes = []
         edges = []
         
@@ -108,17 +108,21 @@ class Clusterer:
                 'value': data['weight']
             })
         
+        # 使用自定义的图例名称
+        num_clusters = len(cluster_results)
+        categories = [{'name': legend_names[i]} for i in range(min(num_clusters, len(legend_names)))]
+        
         # 创建echarts配置
         option = {
             'title': {'text': '术语关系网络'},
             'tooltip': {},
-            'legend': {'data': [f'类别{i}' for i in range(len(cluster_results))]},
+            'legend': {'data': [cat['name'] for cat in categories]},
             'series': [{
                 'type': 'graph',
                 'layout': 'none',
                 'data': nodes,
                 'links': edges,
-                'categories': [{'name': f'类别{i}'} for i in range(len(cluster_results))],
+                'categories': categories,
                 'roam': True,
                 'label': {'show': True},
                 'force': {'repulsion': 100}
@@ -127,9 +131,18 @@ class Clusterer:
         
         return option
     
-    def process(self, terms_file):
-        # 读取术语文件
-        terms_df = pd.read_csv(terms_file)
+    def process(self, terms_file, legend_names=None):
+        # 如果没有提供图例名称，使用默认的
+        if legend_names is None:
+            legend_names = [f'类别{i}' for i in range(100)]  # 设置足够大的默认值
+            
+        # 读取术语文件 - 修改为读取txt文件
+        terms_data = []
+        for line in terms_file:
+            terms = line.decode('utf-8').strip()
+            if terms:  # 忽略空行
+                terms_data.append({'terms': terms})
+        terms_df = pd.DataFrame(terms_data)
         
         # 构建网络
         G, term_counts = self.build_cooccurrence_network(terms_df)
@@ -144,7 +157,7 @@ class Clusterer:
         pos = self.layout_network(G)
         
         # 创建可视化数据
-        visualization = self.create_visualization_data(G, pos, cluster_results)
+        visualization = self.create_visualization_data(G, pos, cluster_results, legend_names)
         
         # 准备输出数据
         graph_data = {
@@ -157,3 +170,18 @@ class Clusterer:
         cluster_results_str = '\n'.join([f"{k}\t{';'.join(v)}" for k, v in cluster_results.items()])
         
         return graph_data_str, cluster_results_str, visualization 
+    
+    def update_visualization(self, visualization, new_legend_names):
+        """更新可视化配置中的图例名称"""
+        # 创建新的可视化配置（深拷贝避免修改原始数据）
+        new_visualization = json.loads(json.dumps(visualization))
+        
+        # 更新类别名称
+        num_categories = len(new_visualization['series'][0]['categories'])
+        for i in range(min(num_categories, len(new_legend_names))):
+            new_visualization['series'][0]['categories'][i]['name'] = new_legend_names[i]
+        
+        # 更新图例数据
+        new_visualization['legend']['data'] = new_legend_names[:num_categories]
+        
+        return new_visualization
