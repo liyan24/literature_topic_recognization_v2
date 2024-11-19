@@ -1,0 +1,3 @@
+terms
+有氧运动;脑卒中患者;凝血功能;凝血六项;血浆纤维蛋白原(FIB);D-二聚体(D-D);活化部分凝血活酶时间(APTT);凝血酶原时间(PT);国际标准化比值(INR);凝血酶时间(TT);心肺运动试验;功率自行车;统计学意义
+Large language models (LLMs); medical education; multi-agent framework; agentic patient; expert doctor; radiologist; multi-modal learning environment; question-asking skills; multidisciplinary collaboration; peer discussions; virtual students; performance enhancements; human-like learning behaviors; learning samples; AI-integrated training paradigms

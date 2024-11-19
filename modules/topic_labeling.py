@@ -20,20 +20,11 @@ class TopicLabeler:
         cluster_ids = []
         term_lists = []
         
+        prompt = "你是一位科技情报信息的分析专家\n你的任务是：\n（1）通过给定的一系列的科技文献的聚类结果及类别下的词，概括每个类的类别。\n（2）根据所有类别的结果，概括这个领域的研究热点是什么。\n输入格式为：cluster_x:主题词1、主题词2、...\n输出格式为：cluster_x的主题标签是《主题标签》\n以下是类别及类别下的词：\n\n"
+
         # 对每个聚类进行处理
         for cluster_id, terms in clusters.items():
-            prompt = f"你是一位科技情报信息的分析专家\n你的任务是：\n（1）通过给定的一系列的科技文献的聚类结果及类别下的词，概括每个类的类别。\n（2）根据所有类别的结果，概括这个领域的研究热点是什么。\n输入格式为：类别x:主题词1、主题词2、...\n输出格式为：类别x的主题标签是《主题标签》\n以下是类别及类别下的词：\n\n{terms}"
-            label = self.llm_client.get_completion(prompt)
+            prompt += f"{cluster_id}:{terms}\n"
             
-            labels.append(label.strip())
-            cluster_ids.append(cluster_id)
-            term_lists.append(terms)
-        
-        # 创建结果DataFrame
-        results = pd.DataFrame({
-            'cluster_id': cluster_ids,
-            'topic_label': labels,
-            'terms': term_lists
-        })
-        
-        return results 
+        label = self.llm_client.get_completion(prompt)
+        return label 

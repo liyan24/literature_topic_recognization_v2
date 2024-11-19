@@ -7,6 +7,7 @@ from streamlit_echarts import st_echarts
 import urllib.parse
 import time
 import json
+import re
 
 st.set_page_config(page_title="科技文献聚类分析系统", layout="wide")
 
@@ -26,7 +27,7 @@ def main():
         # 侧边栏参数设置
         with st.sidebar:
             st.subheader("参数设置")
-            api_key = st.text_input("API Key", type="password", value="sk-ba6af59586a1441ca7ebb6ffbb0a75c8")
+            api_key = st.text_input("API Key", type="password", value="")
             base_url = st.text_input("Base URL", value="https://api.deepseek.com")
             model_name = st.text_input("模型名称", value="deepseek-chat")
             start_button = st.button("RUN")
@@ -38,9 +39,9 @@ def main():
             st.dataframe(results)
             st.download_button(
                 "下载提取结果",
-                results.to_csv(index=False).encode('utf-8'),
-                "extracted_terms.csv",
-                "text/csv"
+                results.to_csv(index=False, header=False).encode('utf-8'),
+                "extracted_terms.txt", 
+                "text/plain"
             )
 
     # 聚类及可视化部分
@@ -49,18 +50,25 @@ def main():
         
         terms_file = st.file_uploader("上传术语列表", type=['txt'])
         
-        # 侧边栏参数设置 - 移除图例设置
+        # 侧边栏参数设置
         with st.sidebar:
             st.subheader("参数设置")
             st.subheader("聚类参数")
-            num_nodes = st.number_input("节点个数", value=300)
-            num_relations = st.number_input("关系个数", value=500)
-            random_seed = st.number_input("随机种子", value=0)
-            decay_steps = st.number_input("衰减步数", value=1)
-            max_iter = st.number_input("最大迭代次数", value=100)
-            initial_step = st.number_input("初始步长", value=1.0)
-            step_decay = st.number_input("步长衰减", value=0.75)
-            step_convergence = st.number_input("步长收敛", value=0.001)
+            
+            # 第一行
+            col1, col2 = st.columns(2)
+            with col1:
+                num_nodes = st.number_input("节点个数", value=300)
+                decay_steps = st.number_input("衰减步数", value=1)
+                initial_step = st.number_input("初始步长", value=1.0)
+                step_convergence = st.number_input("步长收敛", value=0.001, format="%.3f")
+            
+            with col2:
+                num_relations = st.number_input("关系个数", value=500)
+                max_iter = st.number_input("最大迭代次数", value=100)
+                step_decay = st.number_input("步长衰减", value=0.75)
+                random_seed = st.number_input("随机种子", value=0)
+            
             start_button = st.button("RUN")
         
         # 主界面显示结果
@@ -91,14 +99,7 @@ def main():
                 status_placeholder.text("正在处理数据并进行聚类...")
                 progress_bar.progress(40)
                 
-                # 先进行聚类处理，使用临时的图例名称
                 graph_data, cluster_results_str, visualization = clusterer.process(terms_file)
-                
-                # 解析聚类结果获取类别数量
-                num_clusters = len(visualization['series'][0]['categories'])
-                
-                # 设置默认图例名称
-                default_legend_names = [f"类别{i+1}" for i in range(num_clusters)]
                 
                 status_placeholder.text("正在生成可视化...")
                 progress_bar.progress(80)
@@ -126,30 +127,9 @@ def main():
                     href = f'data:text/plain;charset=utf-8,{encoded_cluster_results}'
                     st.markdown(f'<a href="{href}" download="cluster.txt">下载聚类结果</a>', unsafe_allow_html=True)
                 
-                # 添加图例设置区域
-                st.subheader("图例设置")
-                legend_names = st.text_area(
-                    "输入图例名称（每行一个）",
-                    value="\n".join(default_legend_names),
-                    help=f"当前聚类数量为{num_clusters}，请输入对应数量的图例名称"
-                )
-                update_legend = st.button("更新图例")
-                
-                # 创建图表容器
-                chart_container = st.empty()
-                
-                # 显示初始图表
-                with chart_container:
-                    st.write("关系图可视化：")
-                    st_echarts(visualization, height="800px")
-                
-                # 当点击更新图例按钮时
-                if update_legend:
-                    new_legend_list = [name.strip() for name in legend_names.split('\n') if name.strip()]
-                    new_visualization = clusterer.update_visualization(visualization, new_legend_list)
-                    with chart_container:
-                        st.write("关系图可视化：")
-                        st_echarts(new_visualization, height="800px")
+                # 显示图表
+                st.write("关系图可视化：")
+                st_echarts(visualization, height="800px")
                 
             except Exception as e:
                 status_placeholder.error(f"处理过程中发生错误: {str(e)}")
@@ -159,28 +139,95 @@ def main():
     else:
         st.header("主题标签揭示")
         
-        # 移到主界面的文件上传
-        cluster_file = st.file_uploader("上传聚类结果文件", type=['txt'])
-        
+        # 初始化 session state
+        if 'topics_text' not in st.session_state:
+            st.session_state.topics_text = None
+        if 'topics' not in st.session_state:
+            st.session_state.topics = None
+            
         # 侧边栏参数设置
         with st.sidebar:
             st.subheader("参数设置")
-            api_key = st.text_input("API Key", type="password", value="sk-ba6af59586a1441ca7ebb6ffbb0a75c8")
+            api_key = st.text_input("API Key", type="password", value="")
             base_url = st.text_input("Base URL", value="https://api.deepseek.com")
             model_name = st.text_input("模型名称", value="deepseek-chat")
-            start_button = st.button("RUN")
-        
-        # 主界面显示结果
-        if start_button and cluster_file is not None:
+
+        # 第一步：上传聚类文件并获取主题
+        cluster_file = st.file_uploader("上传聚类结果文件", type=['txt'])
+        get_topics_button = st.button("获取主题标签")
+
+        if get_topics_button and cluster_file is not None:
+            # 处理主题标签
             labeler = TopicLabeler(api_key, base_url, model_name)
-            topics = labeler.label_topics(cluster_file)
-            st.dataframe(topics)
-            st.download_button(
-                "下载主题标签结果",
-                topics.to_csv(index=False).encode('utf-8'),
-                "topic_labels.csv",
-                "text/csv"
-            )
+            st.session_state.topics_text = labeler.label_topics(cluster_file)
+            # 提取主题标签
+            st.session_state.topics = ';'.join([match.group(1) for match in re.finditer(r'《(.*?)》', st.session_state.topics_text)])
+
+        # 显示主题标签结果（如果存在）
+        if st.session_state.topics_text:
+            st.write("原始主题标签结果：", st.session_state.topics_text)
+            
+            # 第二步：允许编辑主题标签并上传图表数据
+            st.subheader("生成可视化图表")
+            topics_input = st.text_area("编辑主题标签（用分号分隔）", st.session_state.topics)
+            graph_file = st.file_uploader("上传节点关系数据", type=['json'])
+            visualize_button = st.button("生成图表")
+
+            if visualize_button and graph_file is not None:
+                # 处理主题标签列表
+                topic_list = [topic.strip() for topic in topics_input.split(';') if topic.strip()]
+                
+                # 读取并处理图表数据
+                graph_data = json.load(graph_file)
+                
+                # 创建图表配置
+                visualization = {
+                    'title': {'text': '术语关系网络'},
+                    'tooltip': {},
+                    'legend': {'data': topic_list},
+                    'series': [{
+                        'type': 'graph',
+                        "layout": "none",
+                        "symbolSize": 10,
+                        "circular": {
+                            "rotateLabel": False
+                        },
+                        "force": {
+                            "repulsion": 50,
+                            "gravity": 0.2,
+                            "edgeLength": 30,
+                            "friction": 0.6,
+                            "layoutAnimation": True
+                        },
+                        "label": {
+                            "show": True,
+                            "position": "inside",
+                            "margin": 8,
+                            "valueAnimation": False
+                        },
+                        "lineStyle": {
+                            "show": True,
+                            "width": 0.5,
+                            "opacity": 0.7,
+                            "curveness": 0.3,
+                            "type": "solid"
+                        },
+                        "roam": True,
+                        "draggable": False,
+                        "focusNodeAdjacency": True,
+                        'data': graph_data['nodes'],
+                        'links': graph_data['links'],
+                        'categories': [{'name': topic} for topic in topic_list],
+                        'roam': True,
+                        'labelLayout': {
+                            'hideOverlap': True
+                        }
+                    }]
+                }
+            
+                # 显示图表
+                st.write("关系图可视化：")
+                st_echarts(visualization, height="800px")
 
 if __name__ == "__main__":
     main() 
