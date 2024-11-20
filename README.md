@@ -29,6 +29,19 @@ pip install langchain_openai
 pip install networkx
 pip install scikit-learn
 ```
+建议使用国内镜像源安装，以提高安装速度。如：
+```bash
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple/ -r requirements.txt
+```
+以及
+pip install streamlit -i https://pypi.tuna.tsinghua.edu.cn/simple/
+pip install streamlit-echarts -i https://pypi.tuna.tsinghua.edu.cn/simple/
+pip install langchain -i https://pypi.tuna.tsinghua.edu.cn/simple/
+pip install langchain_openai -i https://pypi.tuna.tsinghua.edu.cn/simple/
+pip install networkx -i https://pypi.tuna.tsinghua.edu.cn/simple/
+pip install scikit-learn -i https://pypi.tuna.tsinghua.edu.cn/simple/
+```
+
 
 3. 运行项目
 ```bash
