@@ -7,13 +7,12 @@
 - 前端框架：Streamlit
 - 后端语言：Python
 - 主要功能：文献主题识别、文本分类
-- 核心依赖：scikit-learn, transformers, pandas
 
 #### 安装步骤
 
 1. 克隆项目到本地
 bash
-git clone https://github.com/your-username/literature-topic-recognition-v2.git
+git clone https://gitee.com/liyan24/literature_topic_recognization_v2.git
 cd literature-topic-recognition-v2
 ```
 
