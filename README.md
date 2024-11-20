@@ -20,6 +20,15 @@ cd literature-topic-recognition-v2
 ```bash
 pip install -r requirements.txt
 ```
+或者：
+```bash
+pip install streamlit
+pip install streamlit-echarts
+pip install langchain
+pip install langchain_openai
+pip install networkx
+pip install scikit-learn
+```
 
 3. 运行项目
 ```bash
