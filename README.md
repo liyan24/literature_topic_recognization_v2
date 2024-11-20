@@ -1,37 +1,45 @@
-# literature_topic_recognization_v2
+# Literature Topic Recognition V2
 
-#### 介绍
-使用streamlit对literature_topic_recognization进行的重构。
+#### 项目介绍
+基于 Streamlit 框架开发的文献主题识别系统，是对原 literature_topic_recognition 项目的重构版本。本项目提供了友好的 Web 界面，用于进行文献主题的自动识别与分类。
 
-#### 软件架构
-软件架构说明
+#### 技术架构
+- 前端框架：Streamlit
+- 后端语言：Python
+- 主要功能：文献主题识别、文本分类
+- 核心依赖：scikit-learn, transformers, pandas
+
+#### 安装步骤
+
+1. 克隆项目到本地
+bash
+git clone https://github.com/your-username/literature-topic-recognition-v2.git
+cd literature-topic-recognition-v2
+```
+
+2. 安装依赖
+```bash
+pip install -r requirements.txt
+```
+
+3. 运行项目
+```bash
+streamlit run app.py    
 
 
-#### 安装教程
+4. 在浏览器中访问 `http://localhost:8501`
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+#### 主要功能
 
-#### 使用说明
+- 文献主题自动识别
+- 批量文献处理
+- 主题分类可视化
+- 结果导出功能
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
-
-#### 参与贡献
-
-1.  Fork 本仓库
-2.  新建 Feat_xxx 分支
-3.  提交代码
-4.  新建 Pull Request
-
-
-#### 特技
-
-1.  使用 Readme\_XXX.md 来支持不同的语言，例如 Readme\_en.md, Readme\_zh.md
-2.  Gitee 官方博客 [blog.gitee.com](https://blog.gitee.com)
-3.  你可以 [https://gitee.com/explore](https://gitee.com/explore) 这个地址来了解 Gitee 上的优秀开源项目
-4.  [GVP](https://gitee.com/gvp) 全称是 Gitee 最有价值开源项目，是综合评定出的优秀开源项目
-5.  Gitee 官方提供的使用手册 [https://gitee.com/help](https://gitee.com/help)
-6.  Gitee 封面人物是一档用来展示 Gitee 会员风采的栏目 [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+#### 项目结构
+literature-topic-recognition-v2/
+├── app.py # 主程序入口
+├── requirements.txt # 项目依赖
+├── models/ # 模型文件
+├── utils/ # 工具函数
+└── data/ # 数据文件
