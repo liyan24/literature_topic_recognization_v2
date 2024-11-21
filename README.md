@@ -68,4 +68,7 @@ pip install scikit-learn -i https://pypi.tuna.tsinghua.edu.cn/simple/
 streamlit run app.py  
 ```
 
-4. 在浏览器中访问 `http://localhost:8501`
+4. 在浏览器中访问 `http://localhost:8501`（初次运行streamlit，需要填写邮箱）
+    (1) 第一步输入的样例文件位于data\test.csv，需要配置相关大模型进行术语抽取（基于prompt，会消耗较多token），直接使用其他关键词列表可以跳过此步骤。
+    (2) 第二步输入的样例文件位于data\keywords.txt。输出文件有cluster.txt及graph_data.json
+    (3) 第三步输入的样例文件位于data\cluster.txt，需要配置相关大模型进行标签揭示，定义标签之后可以上传步骤二中的graph_data.json，生成标签更改后的可视化图。
