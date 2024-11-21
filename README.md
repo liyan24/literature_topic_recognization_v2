@@ -5,13 +5,13 @@
 基于 Streamlit 框架开发的文献主题识别系统，是对原 literature_topic_recognition 项目的重构版本。本项目提供了友好的 Web 界面，用于进行文献主题的自动识别与分类。
 
 #### 背景
-![背景](image/README/background.jpg)
+![背景](image/README/background.png)
 
 #### 软件效果
-![软件效果](image/README/software_effect.jpg)
+![软件效果](image/README/software_effect.png)
 
 #### 方法路线
-![方法路线](image/README/method_route.jpg)
+![方法路线](image/README/method_route.png)
 
 
 #### 技术架构
