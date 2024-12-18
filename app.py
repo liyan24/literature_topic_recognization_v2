@@ -1,17 +1,21 @@
+# -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
 from modules.term_extraction import TermExtractor
 from modules.clustering import Clusterer
 from modules.topic_labeling import TopicLabeler
 from streamlit_echarts import st_echarts
+from utils.time_utils import format_time, estimate_remaining_time
 import urllib.parse
 import time
 import json
 import re
+import os
 
-st.set_page_config(page_title="科技文献聚类分析系统", layout="wide")
 
 def main():
+    st.set_page_config(page_title="科技文献聚类分析系统", layout="wide")
+    
     st.title("科技文献聚类与主题标签揭示软件")
     
     # 在侧边栏创建步骤选择
@@ -22,7 +26,7 @@ def main():
         st.header("术语抽取")
         
         # 主界面文件上传和提示词模板
-        uploaded_file = st.file_uploader("上传文献CSV文件", type=['csv'])
+        uploaded_file = st.file_uploader("上传CSV文件", type=['csv'])
 
         # 侧边栏参数设置
         with st.sidebar:
@@ -30,19 +34,99 @@ def main():
             api_key = st.text_input("API Key", type="password", value="")
             base_url = st.text_input("Base URL", value="https://api.deepseek.com")
             model_name = st.text_input("模型名称", value="deepseek-chat")
-            start_button = st.button("RUN")
+            col1, col2 = st.columns(2)
+            with col1:
+                start_button = st.button("RUN")
         
+        results = []
+        error_indices = []
+
         # 主界面显示结果
         if start_button and uploaded_file is not None:
-            extractor = TermExtractor(api_key, base_url, model_name)
-            results = extractor.extract_terms(uploaded_file)
-            st.dataframe(results)
-            st.download_button(
-                "下载提取结果",
-                results.to_csv(index=False, header=False).encode('utf-8'),
-                "extracted_terms.txt", 
-                "text/plain"
-            )
+            # 创建显示容器
+            progress_placeholder = st.empty()
+            status_placeholder = st.empty()
+            time_placeholder = st.empty()
+            estimate_placeholder = st.empty()
+            
+            try:
+                # 读取CSV文件并获取总记录数
+                df = pd.read_csv(uploaded_file)
+                total_records = len(df)
+                
+                # 创建进度显示
+                with progress_placeholder.container():
+                    progress_bar = st.progress(0)
+                
+                # 记录开始时间
+                start_time = time.time()
+                
+                # 创建抽取器并处理
+                extractor = TermExtractor(
+                    api_key, 
+                    base_url, 
+                    model_name,
+                )
+                
+                def update_progress(i):
+                    current = i + 1
+                    progress_bar.progress(current / total_records)
+                    status_placeholder.text(f"正在处理: {current}/{total_records}")
+                    
+                    # 计算已用时间
+                    elapsed_time = time.time() - start_time
+                    time_placeholder.text(f"已用时间: {format_time(elapsed_time)}")
+                    
+                    # 估算剩余时间
+                    remaining_time = estimate_remaining_time(elapsed_time, current, total_records)
+                    estimate_placeholder.text(f"预计剩余时间: {remaining_time}")
+                    
+                
+                for i, row in df.iterrows():
+                    update_progress(i)
+                    try:
+                        response = extractor.extract_terms_single(row)  # 假设有单条处理的方法
+                        results.append(response.strip())
+                    except Exception as e:
+                        error_indices.append(i)
+                        extractor.log_error(i, row, str(e))
+                        results.append("")
+                
+                # 显示处理结果
+                if len(error_indices) > 0:
+                    st.error(f"处理过程中出现 {len(error_indices)} 条记录错误")
+                    
+                    # 获取出错记录
+                    error_df = extractor.get_error_records_df()
+                    
+                    # 下载出错记录
+                    st.download_button(
+                        "下载出错记录",
+                        error_df.to_csv(index=False).encode('utf-8'),
+                        "error_records.csv",
+                        "text/csv"
+                    )
+                
+                # 过滤掉空值记录（出错的记录）
+                valid_results = pd.DataFrame({'terms': results})
+                
+                # 显示有效结果
+                processed_count = len(extractor.extracted_terms)
+                st.write(f"已处理 {processed_count} 条记录，成功处理 {len(valid_results)} 条记录")
+                st.dataframe(valid_results)
+                
+                # 下载成功处理的结果
+                st.download_button(
+                    "下载提取结果",
+                    valid_results.to_csv(index=False).encode('utf-8'),
+                    "extracted_terms.txt",
+                    "text/plain"
+                )
+                
+            except Exception as e:
+                st.error(f"程序发生错误: {str(e)}")
+                progress_placeholder.empty()
+            
 
     # 聚类及可视化部分
     elif step == "聚类及可视化":
@@ -162,11 +246,17 @@ def main():
             st.session_state.topics_text = labeler.label_topics(cluster_file)
             # 提取主题标签
             st.session_state.topics = ';'.join([match.group(1) for match in re.finditer(r'《(.*?)》', st.session_state.topics_text)])
+            
 
         # 显示主题标签结果（如果存在）
         if st.session_state.topics_text:
-            st.write("原始主题标签结果：", st.session_state.topics_text)
-            
+            st.write("原始主题标签结果：\n", st.session_state.topics_text)
+            st.download_button(
+                    "下载主题结果",
+                    st.session_state.topics_text.encode('utf-8'),
+                    "topics_text.txt",
+                    "text/plain"
+                )
             # 第二步：允许编辑主题标签并上传图表数据
             st.subheader("生成可视化图表")
             topics_input = st.text_area("编辑主题标签（用分号分隔）", st.session_state.topics)

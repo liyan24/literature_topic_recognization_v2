@@ -1,5 +1,9 @@
 # Literature Topic Recognition V2
 
+#update 2024-12-18
+1. 术语抽取部分增加了进度条和错误处理，如果中间出错，将输出一行空字符串，并会在程序运行结束后将错误的输入行号和输入信息也提供下载。
+2. 主题揭示部分增加了获取标签结果之后的下载功能，可以将揭示标签结果下载为txt文件。
+
 #### 项目介绍
 基于 Streamlit 框架开发的文献主题识别系统，是对原 literature_topic_recognition 项目的重构版本。本项目提供了友好的 Web 界面，用于进行文献主题的自动识别与分类。
 
@@ -63,4 +67,7 @@ literature-topic-recognition-v2/
 ├── requirements.txt # 项目依赖
 ├── models/ # 模型文件
 ├── utils/ # 工具函数
+├── tmp/ # 临时文件,如果处理过程出错可以保存在后台
 └── data/ # 数据文件
+
+

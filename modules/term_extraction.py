@@ -7,28 +7,76 @@ from langchain_core.prompts import ChatPromptTemplate
 class TermExtractor:
     def __init__(self, api_key, base_url, model_name):
         self.llm_client = LLMClient(api_key, base_url, model_name).client
+        self.error_records = []  # 存储出错的记录
+        self.extracted_terms = []  # 存储已处理的结果
+        self.error_indices = []  # 存储出错的行索引
     
-    def extract_terms(self, file):
-        # 读取CSV文件
-        df = pd.read_csv(file)
-        
-        # 存储提取结果
-        extracted_terms = []
+    def extract_terms_single(self, row):
+        """处理单条记录"""
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", self.get_template()),
+            ("user", f"标题：{row['title']}\n摘要：{row['abstract']}")
+        ])
+        chain = prompt | self.llm_client | StrOutputParser()
+        response = chain.invoke({"title": row["title"], "abstract": row["abstract"]})
+        return response.strip()
+
+    def log_error(self, index, row, error):
+        """记录错误信息"""
+        self.error_indices.append(index)
+        self.error_records.append({
+            'index': index,
+            'title': row["title"],
+            'abstract': row["abstract"],
+            'error': error
+        })
+
+    def extract_terms(self, df, progress_callback=None):
+        self.extracted_terms = []
+        self.error_indices = []
+        self.error_records = []
         
         prompt = ChatPromptTemplate.from_messages([("system", self.get_template()),("user","标题：{title}\n摘要：{abstract}")])
         chain = prompt | self.llm_client | StrOutputParser()
 
-        # 对每篇文献进行处理
-        for _,row in df.iterrows():
-            response = chain.invoke({"title": row["title"], "abstract": row["abstract"]})
-            extracted_terms.append(response.strip())
+        for i, row in df.iterrows():
+            # 检查停止标志
+                
+            try:
+                response = chain.invoke({"title": row["title"], "abstract": row["abstract"]})
+                self.extracted_terms.append(response.strip())
+                
+                if progress_callback:
+                    progress_callback(i)
+                    
+            except Exception as e:
+                # 记录出错的行
+                self.error_indices.append(i)
+                self.error_records.append({
+                    'index': i,
+                    'title': row["title"],
+                    'abstract': row["abstract"],
+                    'error': str(e)
+                })
+                # 为保持数组长度一致，添加空值
+                self.extracted_terms.append("")
         
         # 创建结果DataFrame
         results = pd.DataFrame({
-            'terms': extracted_terms
+            'terms': self.extracted_terms
         })
         
-        return results 
+        return results, self.error_indices
+    
+    def get_partial_results(self):
+        """返回已处理的部分结果"""
+        return pd.DataFrame({
+            'terms': self.extracted_terms
+        }), self.error_indices
+    
+    def get_error_records_df(self):
+        """返回出错记录的DataFrame"""
+        return pd.DataFrame(self.error_records)
     
     def get_template(self):
         return '''你是一个科技术语抽取的专业人员，请遵循以下指令来工作。
@@ -48,7 +96,7 @@ class TermExtractor:
 案例2：
 ### 输入：
 标题： "基于Transformer的图像分割技术研究"
-摘要： "本文提出了一种基于Transformer架构的图像分割方法。通过自注意力机制，该方法能够有效地捕捉图像中的全局和局部特征。实验结果表明，该方法在分割精度和计算效率方面均优于传统方法。此外，我们还探讨了模型的可扩展性和实时应用能力。"
+摘要： "本文提出了一基于Transformer架构的图像分割方法。通过自注意力机制，该方法能够有效地捕捉图像中的全局和局部特征。实验结果表明，该方法在分割精度和计算效率方面均优于传统方法。此外，我们还���讨了模型的可扩展性和实时应用能力。"
 ### 输出：
 计算机视觉;图像分割技术;Transformer架构;自注意力机制;分割精度;计算效率;模型可扩展性;实时应用能力
 
