@@ -30,49 +30,6 @@ class TermExtractor:
             'abstract': row["abstract"],
             'error': error
         })
-
-    def extract_terms(self, df, progress_callback=None):
-        self.extracted_terms = []
-        self.error_indices = []
-        self.error_records = []
-        
-        prompt = ChatPromptTemplate.from_messages([("system", self.get_template()),("user","标题：{title}\n摘要：{abstract}")])
-        chain = prompt | self.llm_client | StrOutputParser()
-
-        for i, row in df.iterrows():
-            # 检查停止标志
-                
-            try:
-                response = chain.invoke({"title": row["title"], "abstract": row["abstract"]})
-                self.extracted_terms.append(response.strip())
-                
-                if progress_callback:
-                    progress_callback(i)
-                    
-            except Exception as e:
-                # 记录出错的行
-                self.error_indices.append(i)
-                self.error_records.append({
-                    'index': i,
-                    'title': row["title"],
-                    'abstract': row["abstract"],
-                    'error': str(e)
-                })
-                # 为保持数组长度一致，添加空值
-                self.extracted_terms.append("")
-        
-        # 创建结果DataFrame
-        results = pd.DataFrame({
-            'terms': self.extracted_terms
-        })
-        
-        return results, self.error_indices
-    
-    def get_partial_results(self):
-        """返回已处理的部分结果"""
-        return pd.DataFrame({
-            'terms': self.extracted_terms
-        }), self.error_indices
     
     def get_error_records_df(self):
         """返回出错记录的DataFrame"""

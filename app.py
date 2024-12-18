@@ -111,8 +111,7 @@ def main():
                 valid_results = pd.DataFrame({'terms': results})
                 
                 # 显示有效结果
-                processed_count = len(extractor.extracted_terms)
-                st.write(f"已处理 {processed_count} 条记录，成功处理 {len(valid_results)} 条记录")
+                st.write(f"已处理{total_records} 条记录，失败 {len(error_indices)} 条记录")
                 st.dataframe(valid_results)
                 
                 # 下载成功处理的结果
