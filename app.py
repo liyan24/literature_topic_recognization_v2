@@ -11,7 +11,9 @@ import time
 import json
 import re
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
 def main():
     st.set_page_config(page_title="科技文献聚类分析系统", layout="wide")
@@ -31,9 +33,9 @@ def main():
         # 侧边栏参数设置
         with st.sidebar:
             st.subheader("参数设置")
-            api_key = st.text_input("API Key", type="password", value="")
-            base_url = st.text_input("Base URL", value="https://api.deepseek.com")
-            model_name = st.text_input("模型名称", value="deepseek-chat")
+            api_key = st.text_input("API Key", type="password", value=os.getenv("LLM_API_KEY"))
+            base_url = st.text_input("Base URL", value=os.getenv("LLM_BASE_URL"))
+            model_name = st.text_input("模型名称", value=os.getenv("LLM_MODEL_NAME"))
             col1, col2 = st.columns(2)
             with col1:
                 start_button = st.button("RUN")
@@ -231,9 +233,9 @@ def main():
         # 侧边栏参数设置
         with st.sidebar:
             st.subheader("参数设置")
-            api_key = st.text_input("API Key", type="password", value="")
-            base_url = st.text_input("Base URL", value="https://api.deepseek.com")
-            model_name = st.text_input("模型名称", value="deepseek-chat")
+            api_key = st.text_input("API Key", type="password", value=os.getenv("LLM_API_KEY"))
+            base_url = st.text_input("Base URL", value=os.getenv("LLM_BASE_URL"))
+            model_name = st.text_input("模型名称", value=os.getenv("LLM_MODEL_NAME"))
 
         # 第一步：上传聚类文件并获取主题
         cluster_file = st.file_uploader("上传聚类结果文件", type=['txt'])
