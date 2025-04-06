@@ -4,7 +4,6 @@ import networkx as nx
 from modules import community_vos as community
 import json
 from streamlit_echarts import st_echarts
-from sklearn import preprocessing
 from collections import defaultdict
 
 class Clusterer:
@@ -120,8 +119,10 @@ class Clusterer:
         """Create visualization data"""
         nodes = []
         links = []
-        norm_freqs = preprocessing.scale(freqs)
-        size_freqs = preprocessing.minmax_scale(freqs)
+        # 使用numpy替代sklearn的scale函数
+        norm_freqs = (np.array(freqs) - np.mean(freqs)) / np.std(freqs)
+        # 使用numpy替代sklearn的minmax_scale函数
+        size_freqs = (np.array(freqs) - np.min(freqs)) / (np.max(freqs) - np.min(freqs))
 
         # Create NetworkX graph from matrix
         G = nx.Graph()
