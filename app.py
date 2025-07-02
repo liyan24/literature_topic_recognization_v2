@@ -242,11 +242,35 @@ def main():
         get_topics_button = st.button("获取主题标签")
 
         if get_topics_button and cluster_file is not None:
-            # 处理主题标签
+            # 处理主题标签 - 使用流式输出
             labeler = TopicLabeler(api_key, base_url, model_name)
-            st.session_state.topics_text = labeler.label_topics(cluster_file)
-            # 提取主题标签
-            st.session_state.topics = ';'.join([match.group(1) for match in re.finditer(r'《(.*?)》', st.session_state.topics_text)])
+            
+            # 创建流式输出的占位符
+            output_placeholder = st.empty()
+            status_placeholder = st.empty()
+            
+            status_placeholder.text("正在生成主题标签...")
+            
+            # 初始化完整文本
+            full_text = ""
+            
+            try:
+                # 使用流式输出
+                for chunk in labeler.label_topics_stream(cluster_file):
+                    full_text += chunk
+                    # 实时更新显示
+                    output_placeholder.text(full_text)
+                
+                # 处理完成后存储结果
+                st.session_state.topics_text = full_text
+                # 提取主题标签
+                st.session_state.topics = ';'.join([match.group(1) for match in re.finditer(r'《(.*?)》', full_text)])
+                
+                status_placeholder.text("主题标签生成完成！")
+                
+            except Exception as e:
+                status_placeholder.error(f"生成主题标签时发生错误: {str(e)}")
+                output_placeholder.empty()
             
 
         # 显示主题标签结果（如果存在）

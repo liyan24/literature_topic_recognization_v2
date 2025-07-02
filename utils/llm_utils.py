@@ -13,4 +13,13 @@ class LLMClient:
             response = self.client.invoke(prompt)
             return response.content
         except Exception as e:
-            raise Exception(f"调用LLM接口失败: {str(e)}") 
+            raise Exception(f"调用LLM接口失败: {str(e)}")
+    
+    def get_completion_stream(self, prompt):
+        """流式获取LLM回复"""
+        try:
+            for chunk in self.client.stream(prompt):
+                if chunk.content:
+                    yield chunk.content
+        except Exception as e:
+            raise Exception(f"调用LLM流式接口失败: {str(e)}") 
