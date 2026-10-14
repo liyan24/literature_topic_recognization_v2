@@ -61,8 +61,8 @@
 
 1. 克隆项目到本地
 ```bash
-   git clone https://gitee.com/liyan24/literature_topic_recognition_v2.git
-   cd literature-topic-recognition-v2
+   git clone https://github.com/liyan24/literature_topic_recognization_v2.git
+   cd literature_topic_recognition_v2
 
 ```
 
