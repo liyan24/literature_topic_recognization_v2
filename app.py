@@ -8,6 +8,7 @@ from modules import homepage
 from streamlit_echarts import st_echarts
 from utils.time_utils import format_time, estimate_remaining_time
 import urllib.parse
+import base64
 import time
 import json
 import re
@@ -102,6 +103,19 @@ def sample_download_button(filename, label=None):
         file_name=filename,
         key=f"sample_dl_{filename}"
     )
+
+
+def data_uri_download_link(data, filename, label, mimetype='text/plain'):
+    """生成 data-URI 下载链接。
+
+    下载完全在浏览器端完成，不经过服务器/media 端点，避免被中间代理或
+    防火墙拦截（部分内网环境对服务端点下载返回 403）。
+    """
+    if isinstance(data, str):
+        data = data.encode('utf-8')
+    b64 = base64.b64encode(data).decode('ascii')
+    href = f'data:{mimetype};base64,{b64}'
+    st.markdown(f'<a href="{href}" download="{filename}">{label}</a>', unsafe_allow_html=True)
 
 
 def render_api_key_settings():
@@ -284,11 +298,11 @@ def step_term_extraction():
                     error_df = extractor.get_error_records_df()
 
                     # 下载出错记录
-                    st.download_button(
-                        "下载出错记录",
-                        error_df.to_csv(index=False).encode('utf-8'),
+                    data_uri_download_link(
+                        error_df.to_csv(index=False),
                         "error_records.csv",
-                        "text/csv"
+                        "下载出错记录",
+                        mimetype='text/csv'
                     )
 
                 # 过滤掉空值记录（出错的记录）
@@ -299,11 +313,10 @@ def step_term_extraction():
                 st.dataframe(pd.DataFrame({'terms': valid_terms}))
 
                 # 下载成功处理的结果（txt，每行一条，可直接作为第二步输入）
-                st.download_button(
-                    "下载提取结果",
-                    '\n'.join(valid_terms).encode('utf-8'),
+                data_uri_download_link(
+                    '\n'.join(valid_terms),
                     "extracted_terms.txt",
-                    "text/plain"
+                    "下载提取结果"
                 )
 
             except Exception as e:
@@ -519,11 +532,10 @@ def step_topic_labeling():
     # 显示主题标签结果（如果存在）
     if st.session_state.topics_text:
         st.write("原始主题标签结果：\n", st.session_state.topics_text)
-        st.download_button(
-            "下载主题结果",
-            st.session_state.topics_text.encode('utf-8'),
+        data_uri_download_link(
+            st.session_state.topics_text,
             "topics_text.txt",
-            "text/plain"
+            "下载主题结果"
         )
         # 第二步：允许编辑主题标签并上传图表数据
         st.subheader("生成可视化图表")
