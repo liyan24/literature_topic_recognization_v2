@@ -3,6 +3,9 @@ from utils.llm_utils import LLMClient
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from tenacity import retry, stop_after_attempt, wait_exponential
+
 
 class TermExtractor:
     def __init__(self, api_key, base_url, model_name):
@@ -10,16 +13,68 @@ class TermExtractor:
         self.error_records = []  # 存储出错的记录
         self.extracted_terms = []  # 存储已处理的结果
         self.error_indices = []  # 存储出错的行索引
-    
+
     def extract_terms_single(self, row):
         """处理单条记录"""
+        return self.extract_terms_text(row["title"], row["abstract"])
+
+    def extract_terms_text(self, title, abstract):
+        """根据标题和摘要抽取术语"""
         prompt = ChatPromptTemplate.from_messages([
             ("system", self.get_template()),
-            ("user", f"标题：{row['title']}\n摘要：{row['abstract']}")
+            ("user", f"标题：{title}\n摘要：{abstract}")
         ])
         chain = prompt | self.llm_client | StrOutputParser()
-        response = chain.invoke({"title": row["title"], "abstract": row["abstract"]})
+        response = chain.invoke({"title": title, "abstract": abstract})
         return response.strip()
+
+    @retry(stop=stop_after_attempt(4), wait=wait_exponential(multiplier=1, min=2, max=20), reraise=True)
+    def _extract_with_retry(self, title, abstract):
+        """带限流重试的单条抽取（指数退避，最多 4 次）"""
+        return self.extract_terms_text(title, abstract)
+
+    def process_dataframe(self, df, max_workers=5, progress_callback=None):
+        """多线程并发抽取整个 DataFrame。
+
+        Args:
+            df: 包含 title / abstract 两列的 DataFrame
+            max_workers: 并发线程数
+            progress_callback: 回调函数，签名为 callback(done_count, total)
+
+        Returns:
+            与 df.index 对齐的术语结果列表（失败的记录为空字符串）
+        """
+        results = {}
+        self.error_records = []
+        self.error_indices = []
+        total = len(df)
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_map = {
+                executor.submit(self._extract_with_retry, row["title"], row["abstract"]): i
+                for i, row in df.iterrows()
+            }
+            done = 0
+            for future in as_completed(future_map):
+                i = future_map[future]
+                row = df.loc[i]
+                try:
+                    results[i] = future.result()
+                except Exception as e:
+                    self.error_indices.append(i)
+                    self.error_records.append({
+                        'index': i,
+                        'title': row["title"],
+                        'abstract': row["abstract"],
+                        'error': str(e)
+                    })
+                    results[i] = ''
+                done += 1
+                if progress_callback:
+                    progress_callback(done, total)
+
+        # 按原始顺序返回
+        return [results.get(i, '') for i in df.index]
 
     def log_error(self, index, row, error):
         """记录错误信息"""
@@ -30,11 +85,11 @@ class TermExtractor:
             'abstract': row["abstract"],
             'error': error
         })
-    
+
     def get_error_records_df(self):
         """返回出错记录的DataFrame"""
         return pd.DataFrame(self.error_records)
-    
+
     def get_template(self):
         return '''你是一个科技术语抽取的专业人员，请遵循以下指令来工作。
 ### 指令：

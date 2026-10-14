@@ -139,3 +139,12 @@ cython_debug/
 
 
 log.txt
+# SSL certificates (private key must not be tracked)
+cert.pem
+key.pem
+
+# IDE
+.idea/
+
+# runtime checkpoint files
+output/

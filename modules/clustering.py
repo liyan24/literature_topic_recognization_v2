@@ -29,7 +29,10 @@ class Clusterer:
             for term in term_list:
                 if term:
                     dict_word_freq[term.strip()] += 1
-        
+
+        if not dict_word_freq:
+            raise ValueError('未从文件中解析出任何术语，请检查输入文件格式')
+
         # Select top frequency terms
         sorted_dict = sorted(dict_word_freq.items(), key=lambda item: item[1], reverse=True)
         freq = sorted_dict[self.num_nodes - 1][1] if len(dict_word_freq) >= self.num_nodes else sorted_dict[-1][1]
@@ -55,6 +58,9 @@ class Clusterer:
             
         # Remove isolated nodes and normalize
         matrix = matrix.loc[(matrix.sum(axis=1) != 0), (matrix.sum(axis=0) != 0)]
+        if matrix.empty:
+            raise ValueError('术语之间没有共现关系（每行至少需要 2 个术语才可能产生共现），'
+                             '无法聚类，请检查输入数据或增大节点个数')
         series_a = matrix.sum(axis=1)
         for index in matrix.index:
             for col in matrix.columns:
@@ -119,10 +125,13 @@ class Clusterer:
         """Create visualization data"""
         nodes = []
         links = []
-        # 使用numpy替代sklearn的scale函数
-        norm_freqs = (np.array(freqs) - np.mean(freqs)) / np.std(freqs)
+        # 使用numpy替代sklearn的scale函数；std 为 0（所有词频相同）时避免除零
+        freqs_arr = np.array(freqs, dtype=float)
+        std = np.std(freqs_arr)
+        norm_freqs = (freqs_arr - np.mean(freqs_arr)) / std if std > 0 else np.zeros_like(freqs_arr)
         # 使用numpy替代sklearn的minmax_scale函数
-        size_freqs = (np.array(freqs) - np.min(freqs)) / (np.max(freqs) - np.min(freqs))
+        value_range = np.max(freqs_arr) - np.min(freqs_arr)
+        size_freqs = (freqs_arr - np.min(freqs_arr)) / value_range if value_range > 0 else np.zeros_like(freqs_arr)
 
         # Create NetworkX graph from matrix
         G = nx.Graph()
@@ -214,11 +223,20 @@ class Clusterer:
         # Read terms data
         terms_data = []
         for line in terms_file:
-            terms = line.decode('utf-8').strip()
-            if terms:  # Skip empty lines
+            # utf-8-sig 自动去除文件头可能存在的 BOM
+            terms = line.decode('utf-8-sig').strip()
+            # Skip empty lines and the legacy header line from old step-1 outputs
+            if terms and terms.lower() != 'terms':
                 terms_data.append({'terms': terms})
+        if not terms_data:
+            raise ValueError('术语文件为空，请检查文件内容')
         terms_df = pd.DataFrame(terms_data)
-        
+
+        # 参数预检：节点个数不能超过唯一术语数
+        unique_terms = {t.strip() for terms in terms_df['terms'] for t in terms.split(';') if t.strip()}
+        if self.num_nodes > len(unique_terms):
+            self.num_nodes = len(unique_terms)
+
         # Generate matrix and coordinates
         matrix, labels, freqs = self.get_matrix(terms_df)
         coordinate = self.train_model(matrix)
